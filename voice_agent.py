@@ -17,6 +17,7 @@ Run:
   python3 voice_agent.py --demo           # scripted call
   OPENAI_API_KEY=... python3 voice_agent.py --live
   python3 voice_agent.py --live --verbose   # print each model request, response, and tool result
+  python3 voice_agent.py --live --audit     # print the in-memory audit list after each line
   # self-hosted:
   OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_API_KEY=ollama \\
     OPENAI_MODEL=llama3.1 python3 voice_agent.py --live
@@ -328,7 +329,17 @@ DEMO_TURNS = [
 ]
 
 
-def run_turns(agent: VoiceConversationAgent, turns: list[str], echo: bool) -> list[SpeechReply]:
+def print_audit(agent: VoiceConversationAgent) -> None:
+    """Print every audit event kept on this agent. The list is in memory only."""
+    print("\n----- audit -----")
+    if not agent.audit:
+        print("(empty)")
+        return
+    for index, event in enumerate(agent.audit, 1):
+        print(f"{index}. {event.kind} {json.dumps(event.detail, ensure_ascii=False)}")
+
+
+def run_turns(agent: VoiceConversationAgent, turns: list[str], echo: bool, show_audit: bool = False) -> list[SpeechReply]:
     replies: list[SpeechReply] = []
     for transcript in turns:
         reply = agent.handle_utterance(transcript)
@@ -338,6 +349,8 @@ def run_turns(agent: VoiceConversationAgent, turns: list[str], echo: bool) -> li
             print(f"agent > {reply.text}")
             if reply.tools_used:
                 print(f"tools > {', '.join(reply.tools_used)}")
+        if show_audit:
+            print_audit(agent)
     return replies
 
 
@@ -391,7 +404,7 @@ def self_check() -> None:
     print(f"  turn 2 speech: {replies[1].text}")
 
 
-def live(verbose: bool = False) -> None:
+def live(verbose: bool = False, show_audit: bool = False) -> None:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         print("Set OPENAI_API_KEY. For a local model, set OPENAI_BASE_URL and any non-empty key.", file=sys.stderr)
@@ -416,6 +429,8 @@ def live(verbose: bool = False) -> None:
         print(f"agent > {reply.text}")
         if reply.tools_used:
             print(f"tools > {', '.join(reply.tools_used)}")
+        if show_audit:
+            print_audit(agent)
 
 
 def main() -> None:
@@ -425,15 +440,21 @@ def main() -> None:
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--verbose", action="store_true", help="print each model request, response, and tool result")
+    parser.add_argument("--audit", action="store_true", help="print the in-memory audit list after each line")
     args = parser.parse_args()
     if args.show_contract:
         show_contract()
     elif args.live:
-        live(verbose=args.verbose)
+        live(verbose=args.verbose, show_audit=args.audit)
     elif args.self_check:
         self_check()
     else:
-        run_turns(build_agent(ScriptedModel(verbose=args.verbose), verbose=args.verbose), DEMO_TURNS, echo=True)
+        run_turns(
+            build_agent(ScriptedModel(verbose=args.verbose), verbose=args.verbose),
+            DEMO_TURNS,
+            echo=True,
+            show_audit=args.audit,
+        )
 
 
 if __name__ == "__main__":

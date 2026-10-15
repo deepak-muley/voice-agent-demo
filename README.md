@@ -207,6 +207,7 @@ python3 voice_agent.py --self-check     # redaction, confirmation, unknown tool,
 python3 voice_agent.py --show-contract  # print the prompt and tool schemas
 OPENAI_API_KEY=... python3 voice_agent.py --live
 python3 voice_agent.py --live --verbose  # full JSON sent, received, and tool results
+python3 voice_agent.py --demo --audit    # in-memory audit list after each line
 ```
 
 A self-hosted model uses the same client:
