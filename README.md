@@ -16,6 +16,48 @@ There are three modules:
 
 `--demo` and `--self-check` use `ScriptedModel`, a fixed stand-in so the loop runs without an API key. `--live` uses `OpenAICompatibleClient`, which POSTs to `/chat/completions`. Both expose the same method, so the agent does not change.
 
+## What any agent contains
+
+An agent is a loop. The model proposes the next step. Your program decides whether that step is allowed, carries it out, and decides when to stop. The model does not hold the goal, the memory, or the side effects.
+
+Keep these seven parts. The names can change. The jobs should not.
+
+| Part | Job | In this repo |
+| --- | --- | --- |
+| Contract | Who the agent is, what a finished turn looks like, and what it must refuse | `SYSTEM_PROMPT` |
+| Observation | The new input the agent is allowed to see this step | The caller line after `redact` |
+| State | What must still be true on the next step | `messages` and `audit` |
+| Actions | The only ways the agent may affect the world, each with a name, a "when to use this", and an argument schema | `TOOLS` plus the handler map |
+| Loop | Propose, act, observe the result, repeat | `handle_utterance` |
+| Guards | Checks that still hold when the model ignores the prompt | Redaction, the handler allow-list, `confirmed=true`, `normalize_speech`, `MAX_STEPS` |
+| Stop | A final answer, a handoff, or a clear failure | Spoken `SpeechReply`, or the transfer line after 4 steps |
+
+```mermaid
+flowchart TD
+    obs[Observation plus state] --> model[Model proposes the next step]
+    model --> kind{Tool call or final text?}
+    kind -->|tool call| guard[Guard: is this action allowed?]
+    guard -->|no| result[Result: unknown_tool]
+    guard -->|yes| act[Handler performs the action]
+    act --> result
+    result --> obs
+    kind -->|final text| out[Guard the output, then stop]
+```
+
+Three separations make the next agent easier to write:
+
+- **The model is stateless.** It sees the messages you send and returns one turn. Memory is the message list you keep, not something inside the model.
+- **The loop is generic.** `agent.py` does not know about tickets. It knows how to call `complete`, run a named handler, and stop.
+- **The product is the contract and the actions.** A different agent is a different prompt, a different tool list, and different handlers. The loop stays.
+
+Before writing a new one, answer five questions:
+
+1. What is one observation? A chat message, a ticket event, a monitor alert.
+2. What does done look like? A sentence to a person, a row written, a handoff.
+3. Which actions only read, and which actions change something? Put the change behind a check in code, not only in the prompt.
+4. What is still true if the model asks for the wrong tool or never stops? Allow-list, argument check, step cap.
+5. What do you record so a bad turn can be explained later? An audit of proposals and results, with secrets already removed.
+
 ## One caller turn
 
 ```mermaid
