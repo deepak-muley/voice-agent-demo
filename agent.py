@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from model_client import ModelTurn, ToolCall
+from model_client import ModelTurn, ToolCall, trace_json
 
 
 Handler = Callable  # (**arguments) -> dict. Kept unparameterized so Python 3.7 can load it.
@@ -79,13 +79,14 @@ def normalize_speech(text: str) -> str:
 
 
 class VoiceConversationAgent:
-    def __init__(self, model: Any, system_prompt: str, tools: list, handlers: dict) -> None:
+    def __init__(self, model: Any, system_prompt: str, tools: list, handlers: dict, verbose: bool = False) -> None:
         # model.complete(messages, tools) -> ModelTurn
         self.model = model
         self.tools = tools
         self.messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
         self.audit: list[AuditEvent] = []
         self.handlers: dict[str, Handler] = dict(handlers)
+        self.verbose = verbose
 
     def handle_utterance(self, transcript: str) -> SpeechReply:
         cleaned, labels = redact(transcript)
@@ -106,13 +107,14 @@ class VoiceConversationAgent:
                     result = self._run_tool(call)
                     if call.name == "escalate" and result.get("transferred"):
                         escalated = True
-                    self.messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": call.id,
-                            "content": json.dumps(result),
-                        }
-                    )
+                    tool_message = {
+                        "role": "tool",
+                        "tool_call_id": call.id,
+                        "content": json.dumps(result),
+                    }
+                    self.messages.append(tool_message)
+                    if self.verbose:
+                        trace_json("tool result", tool_message)
                 continue
 
             reply = normalize_speech(turn.content or "")

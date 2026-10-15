@@ -16,6 +16,7 @@ Run:
   python3 voice_agent.py --show-contract  # print the prompt and tool schema
   python3 voice_agent.py --demo           # scripted call
   OPENAI_API_KEY=... python3 voice_agent.py --live
+  python3 voice_agent.py --live --verbose   # print each model request, response, and tool result
   # self-hosted:
   OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_API_KEY=ollama \\
     OPENAI_MODEL=llama3.1 python3 voice_agent.py --live
@@ -32,7 +33,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from agent import SpeechReply, VoiceConversationAgent, redact
-from model_client import ModelTurn, OpenAICompatibleClient, ToolCall
+from model_client import ModelTurn, OpenAICompatibleClient, ToolCall, message_from_turn, trace_json
 
 
 # ---------------------------------------------------------------------------
@@ -218,8 +219,18 @@ class ScriptedModel:
     Used by --demo and --self-check so the loop runs without an API key.
     """
 
+    def __init__(self, verbose: bool = False) -> None:
+        self.verbose = verbose
+
     def complete(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> ModelTurn:
-        del tools  # the real client sends these; the script follows the same policy
+        if self.verbose:
+            trace_json("sent to model", {"messages": messages, "tools": tools})
+        turn = self._reply(messages)
+        if self.verbose:
+            trace_json("received from model", message_from_turn(turn))
+        return turn
+
+    def _reply(self, messages: list[dict[str, Any]]) -> ModelTurn:
         last = messages[-1]
         if last["role"] == "tool":
             payload = json.loads(last["content"])
@@ -289,7 +300,7 @@ class ScriptedModel:
         )
 
 
-def build_agent(model: Any, desk: ServiceNowSandbox | None = None) -> VoiceConversationAgent:
+def build_agent(model: Any, desk: ServiceNowSandbox | None = None, verbose: bool = False) -> VoiceConversationAgent:
     """Wire this desk's prompt, tool schemas, and methods into the shared loop."""
     if desk is None:
         desk = ServiceNowSandbox()
@@ -303,6 +314,7 @@ def build_agent(model: Any, desk: ServiceNowSandbox | None = None) -> VoiceConve
             "create_incident": desk.create_incident,
             "escalate": desk.escalate,
         },
+        verbose=verbose,
     )
 
 
@@ -379,7 +391,7 @@ def self_check() -> None:
     print(f"  turn 2 speech: {replies[1].text}")
 
 
-def live() -> None:
+def live(verbose: bool = False) -> None:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         print("Set OPENAI_API_KEY. For a local model, set OPENAI_BASE_URL and any non-empty key.", file=sys.stderr)
@@ -388,8 +400,9 @@ def live() -> None:
         base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         api_key=api_key,
         model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+        verbose=verbose,
     )
-    agent = build_agent(client)
+    agent = build_agent(client, verbose=verbose)
     print("Voice desk. Type a caller utterance, or 'quit'.")
     while True:
         try:
@@ -411,15 +424,16 @@ def main() -> None:
     parser.add_argument("--show-contract", action="store_true")
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--verbose", action="store_true", help="print each model request, response, and tool result")
     args = parser.parse_args()
     if args.show_contract:
         show_contract()
     elif args.live:
-        live()
+        live(verbose=args.verbose)
     elif args.self_check:
         self_check()
     else:
-        run_turns(build_agent(ScriptedModel()), DEMO_TURNS, echo=True)
+        run_turns(build_agent(ScriptedModel(verbose=args.verbose), verbose=args.verbose), DEMO_TURNS, echo=True)
 
 
 if __name__ == "__main__":

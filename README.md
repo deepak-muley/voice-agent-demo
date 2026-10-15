@@ -2,7 +2,7 @@
 
 `voice_agent.py` is a phone-style IT support agent. A caller speaks (here, types a transcript). The program sends that text to a language model. The model either asks for a tool — look up a fix, read a ticket, open a ticket, or transfer to a person — or it returns a short sentence to be spoken aloud.
 
-The model is used as an API. This code does not train or fine-tune anything. Production boundaries, the contracts between these pieces, and open-source replacements are in [PRODUCTION.md](PRODUCTION.md).
+The model is used as an API. This code does not train or fine-tune anything. A line-by-line trace of one live call is in [FLOW.md](FLOW.md). Production boundaries, the contracts between these pieces, and open-source replacements are in [PRODUCTION.md](PRODUCTION.md).
 
 There are three modules:
 
@@ -206,6 +206,7 @@ python3 voice_agent.py --demo           # two-turn VPN call, no API key
 python3 voice_agent.py --self-check     # redaction, confirmation, unknown tool, step cap
 python3 voice_agent.py --show-contract  # print the prompt and tool schemas
 OPENAI_API_KEY=... python3 voice_agent.py --live
+python3 voice_agent.py --live --verbose  # full JSON sent, received, and tool results
 ```
 
 A self-hosted model uses the same client:
