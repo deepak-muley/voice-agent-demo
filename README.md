@@ -2,7 +2,7 @@
 
 `voice_agent.py` is a phone-style IT support agent. A caller speaks (here, types a transcript). The program sends that text to a language model. The model either asks for a tool — look up a fix, read a ticket, open a ticket, or transfer to a person — or it returns a short sentence to be spoken aloud.
 
-The model is used as an API. This code does not train or fine-tune anything.
+The model is used as an API. This code does not train or fine-tune anything. Production boundaries, the contracts between these pieces, and open-source replacements are in [PRODUCTION.md](PRODUCTION.md).
 
 There are three modules:
 
