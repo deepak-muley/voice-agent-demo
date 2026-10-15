@@ -4,11 +4,15 @@
 
 The model is used as an API. This code does not train or fine-tune anything.
 
-There are three pieces:
+There are three modules:
 
-1. **The contract** the model is given: a system prompt plus four tool schemas (`SYSTEM_PROMPT`, `TOOLS`).
-2. **The agent** (`VoiceConversationAgent`) which owns the conversation and decides when a turn is finished.
-3. **Two things the agent calls**: a model (`complete`) and a ticket desk (`ServiceNowSandbox`).
+| Module | What it owns |
+| --- | --- |
+| `model_client.py` | `OpenAICompatibleClient`, `ModelTurn`, `ToolCall` |
+| `agent.py` | `VoiceConversationAgent`, `SpeechReply`, `AuditEvent`, `redact`, `normalize_speech` |
+| `voice_agent.py` | `SYSTEM_PROMPT`, `TOOLS`, `ServiceNowSandbox`, `ScriptedModel`, the CLI |
+
+`VoiceConversationAgent` takes the system prompt, the tool schemas, and a handler map as arguments. `build_agent` in `voice_agent.py` is the only place that connects those to this desk. A second desk can reuse `agent.py` and `model_client.py` by passing its own prompt and handlers.
 
 `--demo` and `--self-check` use `ScriptedModel`, a fixed stand-in so the loop runs without an API key. `--live` uses `OpenAICompatibleClient`, which POSTs to `/chat/completions`. Both expose the same method, so the agent does not change.
 
@@ -42,7 +46,7 @@ sequenceDiagram
 1. `redact` strips SSN, card, and password text. The model never sees the original secret. A redaction is written to `audit`.
 2. The cleaned line is appended as a `user` message. The first message in the list is always the system prompt.
 3. The agent calls `model.complete(messages, TOOLS)`.
-4. If the reply contains tool calls, `_run_tool` runs the matching method on `ServiceNowSandbox` and appends the JSON result. Then the loop calls the model again so it can speak from that result.
+4. If the reply contains tool calls, `_run_tool` runs the matching handler and appends the JSON result. For this desk those handlers are methods on `ServiceNowSandbox`. Then the loop calls the model again so it can speak from that result.
 5. If the reply is plain text, `normalize_speech` strips markdown and respells ticket ids (`INC0010002` becomes `I N C, 0 0 1, 0 0 0, 2`) so text-to-speech can read them. That string is the caller's reply.
 6. After 4 model calls with no spoken reply, the agent stops and says it will transfer the caller. A model that only emits tool calls cannot spin.
 
@@ -56,7 +60,8 @@ The prompt tells the model to wait for a "yes" before opening a ticket. `create_
 classDiagram
     class VoiceConversationAgent {
         model
-        desk: ServiceNowSandbox
+        tools
+        handlers
         messages
         audit
         handle_utterance(transcript) SpeechReply
@@ -113,8 +118,8 @@ classDiagram
         ts
     }
 
-    VoiceConversationAgent o--> ServiceNowSandbox
     VoiceConversationAgent o--> AuditEvent
+    VoiceConversationAgent ..> ServiceNowSandbox : handlers from build_agent
     VoiceConversationAgent ..> OpenAICompatibleClient : live
     VoiceConversationAgent ..> ScriptedModel : demo
     VoiceConversationAgent --> SpeechReply : returns
@@ -138,18 +143,19 @@ classDiagram
 
 `redact` and `normalize_speech` are functions, not classes. They sit on the edges of `handle_utterance`: secrets are removed on the way in, and the spoken form is enforced on the way out.
 
-## Where to read the file
+## Where to read
 
-Read in this order. Each block is one idea.
+Read in this order.
 
-| Lines | What it is |
+| File | What it is |
 | --- | --- |
-| `SYSTEM_PROMPT`, `TOOLS` | The only instructions the model sees |
-| `ToolCall`, `ModelTurn`, `SpeechReply`, `AuditEvent` | The small records passed between pieces |
-| `redact`, `normalize_speech` | Input and output guards |
-| `ServiceNowSandbox` | The four tools and the confirmation check |
-| `OpenAICompatibleClient`, `ScriptedModel` | The two model backends |
-| `VoiceConversationAgent.handle_utterance` | The loop in the sequence diagram |
+| `voice_agent.py` — `SYSTEM_PROMPT`, `TOOLS` | The only instructions the model sees |
+| `model_client.py` — `ToolCall`, `ModelTurn`, `OpenAICompatibleClient` | The HTTP client and the records it returns |
+| `agent.py` — `redact`, `normalize_speech`, `SpeechReply`, `AuditEvent` | Input guard, output guard, and the records the loop returns |
+| `voice_agent.py` — `ServiceNowSandbox` | The four tools and the confirmation check |
+| `voice_agent.py` — `ScriptedModel` | Offline backend with the same `complete` method |
+| `agent.py` — `VoiceConversationAgent.handle_utterance` | The loop in the sequence diagram |
+| `voice_agent.py` — `build_agent` | Wires the prompt, schemas, and desk methods into the loop |
 
 ## Run
 
