@@ -1,5 +1,7 @@
 # One live call, function by function
 
+This trace is the single-agent program in `single_agent/`. `python3 voice_agent.py` from the repo root runs that same program. The multi-agent version of the call is in [multi_agent/README.md](multi_agent/README.md).
+
 ## The short version
 
 At the start we tell the model two things.
@@ -113,27 +115,27 @@ We send the conversation again. This time the model returns a normal sentence, w
 `--verbose` prints these payloads for real, once per model call. The API key stays in the header and is not printed.
 
 ```bash
-python3 voice_agent.py --demo --verbose
-OPENAI_API_KEY=... python3 voice_agent.py --live --verbose
+python3 single_agent/voice_agent.py --demo --verbose
+OPENAI_API_KEY=... python3 single_agent/voice_agent.py --live --verbose
 ```
 
 Each round prints `sent to model` (the request body), `received from model` (the response body), and, when a tool ran, `tool result` (the message appended before the next request).
 
 ## Which functions run a tool call
 
-`handle_utterance` in `agent.py` is the function that handles tool calling. `live` in `voice_agent.py` calls it once for each line you type.
+`handle_utterance` in `single_agent/agent.py` is the function that handles tool calling. `live` in `single_agent/voice_agent.py` calls it once for each line you type.
 
 ```text
-live                          voice_agent.py
-  handle_utterance            agent.py
-    complete                  model_client.py   sends the conversation
-    _parse_completion         model_client.py   reads tool_calls into a ToolCall
-    _assistant_tool_message   agent.py          stores the assistant tool message
-    _run_tool                 agent.py          runs the desk method
-    complete                  model_client.py   sends the tool result, gets the sentence
+live                          single_agent/voice_agent.py
+  handle_utterance            single_agent/agent.py
+    complete                  single_agent/model_client.py   sends the conversation
+    _parse_completion         single_agent/model_client.py   reads tool_calls into a ToolCall
+    _assistant_tool_message   single_agent/agent.py          stores the assistant tool message
+    _run_tool                 single_agent/agent.py          runs the desk method
+    complete                  single_agent/model_client.py   sends the tool result, gets the sentence
 ```
 
-`_run_tool` looks up `call.name` in the handler map and calls that function with the arguments. The map is filled once, at startup, by `build_agent` in `voice_agent.py`:
+`_run_tool` looks up `call.name` in the handler map and calls that function with the arguments. The map is filled once, at startup, by `build_agent` in `single_agent/voice_agent.py`:
 
 | Name in the tool message | Method that runs |
 | --- | --- |
@@ -146,7 +148,7 @@ A name that is not in that map returns `{ok: false, error: unknown_tool}`. No de
 
 The rest of this file is the same session, one function at a time.
 
-This is the session from `python3 voice_agent.py --live`. The words that come back are standard because they are copied from the prompt and from the tool result, not invented for that caller.
+This is the session from `python3 single_agent/voice_agent.py --live`. The words that come back are standard because they are copied from the prompt and from the tool result, not invented for that caller.
 
 ```text
 caller> help
@@ -172,11 +174,11 @@ agent > You're welcome! If you need further assistance, just let me know.
 
 ## What starts before you type
 
-`main` sees `--live` and calls `live` in `voice_agent.py`. `live` builds two objects and then waits:
+`main` sees `--live` and calls `live` in `single_agent/voice_agent.py`. `live` builds two objects and then waits:
 
 | Object | Function | What it holds |
 | --- | --- | --- |
-| `OpenAICompatibleClient` | `model_client.py` | HTTPS address, API key, model name |
+| `OpenAICompatibleClient` | `single_agent/model_client.py` | HTTPS address, API key, model name |
 | `ServiceNowSandbox` | inside `build_agent` | Two knowledge articles and one existing ticket, `INC0010001` |
 | `VoiceConversationAgent` | `build_agent` | The system prompt as the first message, plus a map from tool name to a desk method |
 
@@ -193,7 +195,7 @@ The handler map is the only connection between the loop and the desk:
 
 ## The same five steps for every line
 
-`handle_utterance` in `agent.py` does this:
+`handle_utterance` in `single_agent/agent.py` does this:
 
 1. `redact` looks for an SSN, a card number, or a password. None of these lines had one, so the text was stored as typed.
 2. The line is appended to `messages`. That list is the memory. It still holds the system prompt and every earlier turn.

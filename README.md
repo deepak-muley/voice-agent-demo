@@ -1,18 +1,26 @@
 # Voice desk agent
 
-`voice_agent.py` is a phone-style IT support agent. A caller speaks (here, types a transcript). The program sends that text to a language model. The model either asks for a tool — look up a fix, read a ticket, open a ticket, or transfer to a person — or it returns a short sentence to be spoken aloud.
+The same IT desk is built twice.
 
-The model is used as an API. This code does not train or fine-tune anything. A line-by-line trace of one live call is in [FLOW.md](FLOW.md). Production boundaries, the contracts between these pieces, and open-source replacements are in [PRODUCTION.md](PRODUCTION.md).
+| Folder | What it is |
+| --- | --- |
+| [single_agent/](single_agent/) | One model, one prompt, four tools. Read this first. |
+| [multi_agent/](multi_agent/) | A router and three specialists do the same call. |
+| [local_llm/](local_llm/) | Ollama and Open WebUI on a Kind cluster, installed with Helm. |
 
-There are three modules:
+`single_agent/voice_agent.py` is a phone-style IT support agent. A caller speaks (here, types a transcript). The program sends that text to a language model. The model either asks for a tool — look up a fix, read a ticket, open a ticket, or transfer to a person — or it returns a short sentence to be spoken aloud.
+
+The model is used as an API. This code does not train or fine-tune anything. A line-by-line trace of one live call is in [FLOW.md](FLOW.md). How to write the system prompt is in [PROMPT.md](PROMPT.md). Production boundaries are in [PRODUCTION.md](PRODUCTION.md). Whether LangChain or LangGraph would make the multi-agent version shorter is answered in [multi_agent/README.md](multi_agent/README.md).
+
+The single agent has three modules:
 
 | Module | What it owns |
 | --- | --- |
-| `model_client.py` | `OpenAICompatibleClient`, `ModelTurn`, `ToolCall` |
-| `agent.py` | `VoiceConversationAgent`, `SpeechReply`, `AuditEvent`, `redact`, `normalize_speech` |
-| `voice_agent.py` | `SYSTEM_PROMPT`, `TOOLS`, `ServiceNowSandbox`, `ScriptedModel`, the CLI |
+| `single_agent/model_client.py` | `OpenAICompatibleClient`, `ModelTurn`, `ToolCall` |
+| `single_agent/agent.py` | `VoiceConversationAgent`, `SpeechReply`, `AuditEvent`, `redact`, `normalize_speech` |
+| `single_agent/voice_agent.py` | `SYSTEM_PROMPT`, `TOOLS`, `ServiceNowSandbox`, `ScriptedModel`, the CLI |
 
-`VoiceConversationAgent` takes the system prompt, the tool schemas, and a handler map as arguments. `build_agent` in `voice_agent.py` is the only place that connects those to this desk. A second desk can reuse `agent.py` and `model_client.py` by passing its own prompt and handlers.
+`VoiceConversationAgent` takes the system prompt, the tool schemas, and a handler map as arguments. `build_agent` in `single_agent/voice_agent.py` is the only place that connects those to this desk. A second desk can reuse `agent.py` and `model_client.py` by passing its own prompt and handlers. The multi-agent folder does that: same client, same sandbox, different prompts and smaller tool lists.
 
 `--demo` and `--self-check` use `ScriptedModel`, a fixed stand-in so the loop runs without an API key. `--live` uses `OpenAICompatibleClient`, which POSTs to `/chat/completions`. Both expose the same method, so the agent does not change.
 
@@ -47,7 +55,7 @@ flowchart TD
 Three separations make the next agent easier to write:
 
 - **The model is stateless.** It sees the messages you send and returns one turn. Memory is the message list you keep, not something inside the model.
-- **The loop is generic.** `agent.py` does not know about tickets. It knows how to call `complete`, run a named handler, and stop.
+- **The loop is generic.** `single_agent/agent.py` does not know about tickets. It knows how to call `complete`, run a named handler, and stop.
 - **The product is the contract and the actions.** A different agent is a different prompt, a different tool list, and different handlers. The loop stays.
 
 Before writing a new one, answer five questions:
@@ -191,28 +199,33 @@ Read in this order.
 
 | File | What it is |
 | --- | --- |
-| `voice_agent.py` — `SYSTEM_PROMPT`, `TOOLS` | The only instructions the model sees |
-| `model_client.py` — `ToolCall`, `ModelTurn`, `OpenAICompatibleClient` | The HTTP client and the records it returns |
-| `agent.py` — `redact`, `normalize_speech`, `SpeechReply`, `AuditEvent` | Input guard, output guard, and the records the loop returns |
-| `voice_agent.py` — `ServiceNowSandbox` | The four tools and the confirmation check |
-| `voice_agent.py` — `ScriptedModel` | Offline backend with the same `complete` method |
-| `agent.py` — `VoiceConversationAgent.handle_utterance` | The loop in the sequence diagram |
-| `voice_agent.py` — `build_agent` | Wires the prompt, schemas, and desk methods into the loop |
+| `single_agent/voice_agent.py` — `SYSTEM_PROMPT`, `TOOLS` | The only instructions the model sees. The section order is in [PROMPT.md](PROMPT.md) |
+| `single_agent/model_client.py` — `ToolCall`, `ModelTurn`, `OpenAICompatibleClient` | The HTTP client and the records it returns |
+| `single_agent/agent.py` — `redact`, `normalize_speech`, `SpeechReply`, `AuditEvent` | Input guard, output guard, and the records the loop returns |
+| `single_agent/voice_agent.py` — `ServiceNowSandbox` | The four tools and the confirmation check |
+| `single_agent/voice_agent.py` — `ScriptedModel` | Offline backend with the same `complete` method |
+| `single_agent/agent.py` — `VoiceConversationAgent.handle_utterance` | The loop in the sequence diagram |
+| `single_agent/voice_agent.py` — `build_agent` | Wires the prompt, schemas, and desk methods into the loop |
+| [multi_agent/README.md](multi_agent/README.md) | The same call split into a router, specialists, and a voice agent |
 
 ## Run
 
 ```bash
-python3 voice_agent.py --demo           # two-turn VPN call, no API key
-python3 voice_agent.py --self-check     # redaction, confirmation, unknown tool, step cap
-python3 voice_agent.py --show-contract  # print the prompt and tool schemas
-OPENAI_API_KEY=... python3 voice_agent.py --live
-python3 voice_agent.py --live --verbose  # full JSON sent, received, and tool results
-python3 voice_agent.py --demo --audit    # in-memory audit list after each line
+python3 single_agent/voice_agent.py --demo           # two-turn VPN call, no API key
+python3 single_agent/voice_agent.py --self-check     # redaction, confirmation, unknown tool, step cap
+python3 single_agent/voice_agent.py --show-contract  # print the prompt and tool schemas
+python3 multi_agent/run.py --demo                    # same call, routed across agents
+python3 multi_agent/run.py --self-check              # speech matches the single agent
+OPENAI_API_KEY=... python3 single_agent/voice_agent.py --live
+python3 single_agent/voice_agent.py --live --verbose  # full JSON sent, received, and tool results
+python3 single_agent/voice_agent.py --demo --audit    # in-memory audit list after each line
 ```
 
-A self-hosted model uses the same client:
+`python3 voice_agent.py` at the repo root runs the single agent as well.
+
+A self-hosted model uses the same client. [local_llm/](local_llm/) runs that server on a Kind cluster and opens Open WebUI at http://localhost:8080. The model it pulls is `llama3.2:3b`.
 
 ```bash
 OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_API_KEY=ollama \
-  OPENAI_MODEL=llama3.1 python3 voice_agent.py --live
+  OPENAI_MODEL=llama3.2:3b python3 single_agent/voice_agent.py --live
 ```

@@ -2,7 +2,7 @@
 
 [README.md](README.md) describes the learning loop. This document describes the contracts between the pieces, where those contracts are too weak to run as a service, and which open-source projects fill each gap.
 
-The loop in `agent.py` can stay. Production replaces what sits on either side of it: audio in and out, a shared session store, a model client that streams, and desk handlers that call ServiceNow for one authenticated caller.
+The loop in `single_agent/agent.py` can stay. Production replaces what sits on either side of it: audio in and out, a shared session store, a model client that streams, and desk handlers that call ServiceNow for one authenticated caller. The same desk split into a router and specialists is in [multi_agent/](multi_agent/). A line count of that split against LangChain and LangGraph is in [multi_agent/README.md](multi_agent/README.md).
 
 ## Who talks to whom
 
@@ -184,7 +184,7 @@ LangChain's older agent executor is a second copy of the loop you already have, 
 
 | Piece | Choice |
 | --- | --- |
-| Loop | `agent.py`, unchanged until a turn must pause and resume |
+| Loop | `single_agent/agent.py`, unchanged until a turn must pause and resume |
 | Client | openai-python or LiteLLM, returning `ModelTurn`, streaming |
 | Session | Valkey for the message list and lock. PostgreSQL for audit rows and idempotency keys |
 | Desk | Handlers that call ServiceNow. Same result dicts as the sandbox |

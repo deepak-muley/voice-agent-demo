@@ -80,13 +80,16 @@ class OpenAICompatibleClient:
         self.verbose = verbose
 
     def complete(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> ModelTurn:
-        body = {
+        body: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
-            "tools": tools,
-            "tool_choice": "auto",
             "temperature": 0.2,
         }
+        # The router and the voice agent call complete() with no tools.
+        # An empty tools array is rejected by some compatible servers.
+        if tools:
+            body["tools"] = tools
+            body["tool_choice"] = "auto"
         if self.verbose:
             trace_json("sent to model", body)
         payload = json.dumps(body).encode()
