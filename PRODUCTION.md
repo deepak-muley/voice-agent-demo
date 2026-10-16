@@ -2,7 +2,7 @@
 
 [README.md](README.md) describes the learning loop. This document describes the contracts between the pieces, where those contracts are too weak to run as a service, and which open-source projects fill each gap.
 
-The loop in `single_agent/agent.py` can stay. Production replaces what sits on either side of it: audio in and out, a shared session store, a model client that streams, and desk handlers that call ServiceNow for one authenticated caller. The same desk split into a router and specialists is in [multi_agent/](multi_agent/). A line count of that split against LangChain and LangGraph is in [multi_agent/README.md](multi_agent/README.md). Where that session store sits, and the other multi-agent shapes, are in [PATTERNS.md](PATTERNS.md).
+The loop in `single_agent/agent.py` can stay. Production replaces what sits on either side of it: audio in and out, a shared session store, a model client that streams, and desk handlers that call ServiceNow for one authenticated caller. The same desk split into a router and specialists is in [multi_agent/](multi_agent/). A line count of that split against LangChain and LangGraph is in [multi_agent/README.md](multi_agent/README.md). Where that session store sits, and the other multi-agent shapes, are in [PATTERNS.md](PATTERNS.md). How many of those calls you can run, and the open-source fleet around them, is in [SCALE.md](SCALE.md).
 
 ## Who talks to whom
 

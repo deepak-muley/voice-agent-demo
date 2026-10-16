@@ -11,7 +11,7 @@ The same IT desk is built three times. Two of them use the standard library. The
 
 `single_agent/voice_agent.py` is a phone-style IT support agent. A caller speaks (here, types a transcript). The program sends that text to a language model. The model either asks for a tool — look up a fix, read a ticket, open a ticket, or transfer to a person — or it returns a short sentence to be spoken aloud.
 
-The model is used as an API. This code does not train or fine-tune anything. A line-by-line trace of one live call is in [FLOW.md](FLOW.md). How to write the system prompt is in [PROMPT.md](PROMPT.md). Production boundaries are in [PRODUCTION.md](PRODUCTION.md). Whether LangChain or LangGraph would make the multi-agent version shorter is answered in [multi_agent/README.md](multi_agent/README.md). The runnable graph is in [single_agent_langgraph/README.md](single_agent_langgraph/README.md). Other multi-agent shapes, where call state is stored, and short LangChain and LangGraph sketches are in [PATTERNS.md](PATTERNS.md).
+The model is used as an API. This code does not train or fine-tune anything. A line-by-line trace of one live call is in [FLOW.md](FLOW.md). How to write the system prompt is in [PROMPT.md](PROMPT.md). Production boundaries are in [PRODUCTION.md](PRODUCTION.md). The fleet shape for a million turns a minute, and which open-source project sits at each layer, is in [SCALE.md](SCALE.md). Whether LangChain or LangGraph would make the multi-agent version shorter is answered in [multi_agent/README.md](multi_agent/README.md). The runnable graph is in [single_agent_langgraph/README.md](single_agent_langgraph/README.md). Other multi-agent shapes, where call state is stored, and short LangChain and LangGraph sketches are in [PATTERNS.md](PATTERNS.md).
 
 The single agent has three modules:
 
@@ -211,6 +211,7 @@ Read in this order.
 | [single_agent_langgraph/CONCEPTS.md](single_agent_langgraph/CONCEPTS.md) | What a LangGraph node, edge, and checkpoint are |
 | [single_agent_langgraph/README.md](single_agent_langgraph/README.md) | That single-agent loop as LangGraph nodes |
 | [single_agent_langgraph/FLOW.md](single_agent_langgraph/FLOW.md) | How that graph is built, then one caller line through the nodes |
+| [SCALE.md](SCALE.md) | Cells, GPU math, and the open-source piece at each layer for a million turns a minute |
 
 ## Run
 
