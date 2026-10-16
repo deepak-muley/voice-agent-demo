@@ -1,0 +1,44 @@
+# Helm values for otwld/ollama.
+# https://github.com/otwld/ollama-helm
+#
+# Kind has no GPU. Leave ollama.gpu.enabled false here.
+# On a real cluster with a GPU node pool, set ollama.gpu.enabled true
+# and point persistentVolume.storageClass at that cluster's class
+# (for example gp3 or standard-rwo). Also set service.type back to
+# ClusterIP and publish the API with an Ingress instead of this NodePort.
+
+replicaCount: 1
+
+ollama:
+  gpu:
+    enabled: false
+  models:
+    # Pulled once, into the PVC, by the chart's postStart hook.
+    # The pod is not Ready until the pull finishes.
+    # llama3.2:3b is about 2 GB and runs on CPU inside Docker Desktop.
+    # The desk examples in the repo root use llama3.1 (8B). Swap this
+    # tag if the machine has the RAM, then helm upgrade.
+    pull:
+      - llama3.2:3b
+
+service:
+  type: NodePort
+  port: 11434
+  nodePort: 31434
+
+persistentVolume:
+  enabled: true
+  size: 10Gi
+  storageClass: local-path
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    memory: 6Gi
+
+# The model download runs before the container is marked Running,
+# so the default probe delays are enough once the server is up.
+updateStrategy:
+  type: Recreate

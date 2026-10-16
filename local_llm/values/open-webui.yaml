@@ -1,0 +1,51 @@
+# Helm values for open-webui/open-webui.
+# https://github.com/open-webui/helm-charts
+#
+# Ollama is installed by its own chart (values/ollama.yaml), not as a
+# subchart here. Open WebUI calls that Service over cluster DNS.
+# On a real cluster, set service.type back to ClusterIP and add an Ingress.
+# Turn WEBUI_AUTH back on before this UI is reachable by anyone else.
+
+ollama:
+  enabled: false
+
+ollamaUrls:
+  - http://ollama.llm.svc.cluster.local:11434
+
+# Pipelines and the bundled Redis are extra pods this lab does not need.
+# One replica can use Open WebUI's in-memory websocket manager.
+pipelines:
+  enabled: false
+
+websocket:
+  enabled: true
+  manager: ""
+  redis:
+    enabled: false
+
+enableOpenaiApi: false
+
+replicaCount: 1
+
+service:
+  type: NodePort
+  port: 80
+  containerPort: 8080
+  nodePort: "30080"
+
+persistence:
+  enabled: true
+  size: 2Gi
+  storageClass: local-path
+
+extraEnvVars:
+  # Local Kind only. The first open of http://localhost:8080 skips login.
+  - name: WEBUI_AUTH
+    value: "False"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 2Gi

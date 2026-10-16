@@ -1,0 +1,16 @@
+# Kind cluster for a local Ollama + Open WebUI install.
+# The cluster name must match CLUSTER in scripts/up.sh.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: llm
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # Open WebUI NodePort. values/open-webui.yaml sets service.nodePort to 30080.
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP
+      # Ollama NodePort. values/ollama.yaml sets service.nodePort to 31434.
+      - containerPort: 31434
+        hostPort: 11434
+        protocol: TCP
