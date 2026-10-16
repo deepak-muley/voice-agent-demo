@@ -8,6 +8,7 @@ The same IT desk is built three times. Two of them use the standard library. The
 | [multi_agent/](multi_agent/) | A router and three specialists do the same call. |
 | [single_agent_langgraph/](single_agent_langgraph/) | The single-agent loop as graph nodes. Needs the virtualenv in [requirements.txt](requirements.txt). |
 | [local_llm/](local_llm/) | Ollama and Open WebUI on a Kind cluster, installed with Helm. |
+| [chatgpt_live/](chatgpt_live/) | A GPT-Live (`gpt-live-1`) session. The spoken path, and which library owns each step, is in [chatgpt_live/README.md](chatgpt_live/README.md). |
 
 `single_agent/voice_agent.py` is a phone-style IT support agent. A caller speaks (here, types a transcript). The program sends that text to a language model. The model either asks for a tool — look up a fix, read a ticket, open a ticket, or transfer to a person — or it returns a short sentence to be spoken aloud.
 
@@ -211,6 +212,7 @@ Read in this order.
 | [single_agent_langgraph/CONCEPTS.md](single_agent_langgraph/CONCEPTS.md) | What a LangGraph node, edge, and checkpoint are |
 | [single_agent_langgraph/README.md](single_agent_langgraph/README.md) | That single-agent loop as LangGraph nodes |
 | [single_agent_langgraph/FLOW.md](single_agent_langgraph/FLOW.md) | How that graph is built, then one caller line through the nodes |
+| [chatgpt_live/README.md](chatgpt_live/README.md) | A GPT-Live call: microphone, socket, speakers, and the delegation handoff |
 | [SCALE.md](SCALE.md) | Cells, GPU math, and the open-source piece at each layer for a million turns a minute |
 
 ## Run
@@ -240,4 +242,11 @@ A self-hosted model uses the same client. [local_llm/](local_llm/) runs that ser
 ```bash
 OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_API_KEY=ollama \
   OPENAI_MODEL=llama3.2:3b python3 single_agent/voice_agent.py --live
+```
+
+GPT-Live is a separate session, documented in [chatgpt_live/README.md](chatgpt_live/README.md). The scripted trace needs no key. `--live` uses the virtualenv.
+
+```bash
+python3 chatgpt_live/run.py --self-check
+OPENAI_API_KEY=... .venv/bin/python chatgpt_live/run.py --live
 ```

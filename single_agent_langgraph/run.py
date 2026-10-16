@@ -9,6 +9,7 @@ Run from the repo root, with the virtualenv:
   .venv/bin/python single_agent_langgraph/run.py --show-contract
   OPENAI_API_KEY=... .venv/bin/python single_agent_langgraph/run.py --live
   .venv/bin/python single_agent_langgraph/run.py --live --usage
+  OPENAI_API_KEY=... .venv/bin/python single_agent_langgraph/run.py --voice
 """
 
 from __future__ import annotations
@@ -113,7 +114,11 @@ def self_check() -> None:
         event.kind == "tool_result" and event.detail.get("name") == "list_all_users" and event.detail.get("ok") is False
         for event in trapped.audit
     )
+    from live_voice import check_wire
+
+    spoken = check_wire()
     print("self-check ok")
+    print(f"  voice callback: {spoken}")
     print(f"  turn 1 tools: {replies[0].tools_used}")
     print(f"  turn 1 speech: {replies[0].text}")
     print(f"  turn 2 tools: {replies[1].tools_used}")
@@ -170,6 +175,8 @@ def main() -> None:
     parser.add_argument("--show-contract", action="store_true")
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--voice", action="store_true", help="GPT-Live microphone; this graph answers delegations")
+    parser.add_argument("--no-play", action="store_true", help="with --voice, keep the reply off the speakers")
     parser.add_argument("--calls", action="store_true", help="print start and end of each function in the graph walk")
     parser.add_argument("--verbose", action="store_true", help="print each model request, response, and tool result")
     parser.add_argument("--audit", action="store_true", help="print the in-memory audit list after each line")
@@ -177,6 +184,10 @@ def main() -> None:
     args = parser.parse_args()
     if args.show_contract:
         show_contract()
+    elif args.voice:
+        from live_voice import run_voice
+
+        run_voice(verbose=args.verbose, play=not args.no_play, show_calls=args.calls)
     elif args.live:
         live(verbose=args.verbose, show_audit=args.audit, show_usage=args.usage, show_calls=args.calls)
     elif args.self_check:

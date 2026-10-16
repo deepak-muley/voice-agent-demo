@@ -64,6 +64,7 @@ The audit event for that redaction is still stored. The snapshot holds the label
 | --- | --- | --- |
 | `--demo`, `--self-check` | `ScriptedChatModel` | `ScriptedModel.complete`, the offline stand-in |
 | `--live` | `ChatOpenAI.bind_tools` | `POST /chat/completions` on `OPENAI_BASE_URL` or OpenAI |
+| `--voice` | `ChatOpenAI.bind_tools`, behind GPT-Live | The graph runs when GPT-Live delegates. The microphone and speakers stay in [chatgpt_live/](../chatgpt_live/). The callback is [live_voice.py](live_voice.py). |
 
 `ScriptedChatModel` is the adapter. LangGraph wants an `AIMessage`. The rest of the repo wants a `ModelTurn`. The demo speech matches `python3 single_agent/voice_agent.py --demo`.
 
@@ -96,7 +97,10 @@ From the repo root, with the virtualenv:
 .venv/bin/python single_agent_langgraph/run.py --show-contract
 .venv/bin/python single_agent_langgraph/run.py --demo --audit
 OPENAI_API_KEY=... .venv/bin/python single_agent_langgraph/run.py --live
+OPENAI_API_KEY=... .venv/bin/python single_agent_langgraph/run.py --voice
 ```
+
+`--voice` uses GPT-Live for speech. [live_voice.py](live_voice.py) passes each delegation transcript to `handle_utterance` and returns the sentence for GPT-Live to say. `--live` stays the typed chat-completions loop.
 
 A self-hosted model uses the same `ChatOpenAI` client. [local_llm/](../local_llm/) runs that server.
 
