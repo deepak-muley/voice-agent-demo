@@ -1,6 +1,6 @@
 # One live call, function by function
 
-This trace is the single-agent program in `single_agent/`. `python3 voice_agent.py` from the repo root runs that same program. The multi-agent version of the call is in [multi_agent/README.md](multi_agent/README.md).
+This trace is the single-agent program in `single_agent/`. Run it with `python3 single_agent/voice_agent.py`. The same call as a LangGraph is in [single_agent_langgraph/FLOW.md](single_agent_langgraph/FLOW.md). The multi-agent version of the call is in [multi_agent/README.md](multi_agent/README.md).
 
 ## The short version
 

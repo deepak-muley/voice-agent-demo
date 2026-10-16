@@ -17,6 +17,7 @@ Run from the repo root:
   python3 single_agent/voice_agent.py --demo           # scripted call
   OPENAI_API_KEY=... python3 single_agent/voice_agent.py --live
   python3 single_agent/voice_agent.py --live --verbose   # print each model request, response, and tool result
+  python3 single_agent/voice_agent.py --live --usage     # print token and request totals when the session ends
   python3 single_agent/voice_agent.py --live --audit     # print the in-memory audit list after each line
   # self-hosted:
   OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_API_KEY=ollama \\
@@ -404,7 +405,7 @@ def self_check() -> None:
     print(f"  turn 2 speech: {replies[1].text}")
 
 
-def live(verbose: bool = False, show_audit: bool = False) -> None:
+def live(verbose: bool = False, show_audit: bool = False, show_usage: bool = False) -> None:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         print("Set OPENAI_API_KEY. For a local model, set OPENAI_BASE_URL and any non-empty key.", file=sys.stderr)
@@ -417,20 +418,25 @@ def live(verbose: bool = False, show_audit: bool = False) -> None:
     )
     agent = build_agent(client, verbose=verbose)
     print("Voice desk. Type a caller utterance, or 'quit'.")
-    while True:
-        try:
-            line = input("caller> ").strip()
-        except (EOFError, KeyboardInterrupt):
+    try:
+        while True:
+            try:
+                line = input("caller> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return
+            if not line or line.lower() in {"quit", "exit"}:
+                return
+            reply = agent.handle_utterance(line)
+            print(f"agent > {reply.text}")
+            if reply.tools_used:
+                print(f"tools > {', '.join(reply.tools_used)}")
+            if show_audit:
+                print_audit(agent)
+    finally:
+        if show_usage:
             print()
-            return
-        if not line or line.lower() in {"quit", "exit"}:
-            return
-        reply = agent.handle_utterance(line)
-        print(f"agent > {reply.text}")
-        if reply.tools_used:
-            print(f"tools > {', '.join(reply.tools_used)}")
-        if show_audit:
-            print_audit(agent)
+            print(client.usage.format())
 
 
 def main() -> None:
@@ -441,11 +447,12 @@ def main() -> None:
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--verbose", action="store_true", help="print each model request, response, and tool result")
     parser.add_argument("--audit", action="store_true", help="print the in-memory audit list after each line")
+    parser.add_argument("--usage", action="store_true", help="print token and request totals when a live session ends")
     args = parser.parse_args()
     if args.show_contract:
         show_contract()
     elif args.live:
-        live(verbose=args.verbose, show_audit=args.audit)
+        live(verbose=args.verbose, show_audit=args.audit, show_usage=args.usage)
     elif args.self_check:
         self_check()
     else:

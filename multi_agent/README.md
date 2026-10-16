@@ -102,6 +102,7 @@ tools > create_incident
 | `session.py` | One utterance: route, specialist, speak |
 | `single_imports.py` | Pulls in the sandbox, the client, `redact`, and `normalize_speech`. Nothing here is copied. |
 | `run.py` | CLI and the checks |
+| [PATTERNS.md](../PATTERNS.md) | Other multi-agent shapes, where to store call state, LangChain and LangGraph sketches |
 
 ## What stayed in the single agent
 
@@ -167,3 +168,5 @@ LangGraph replaces `DeskSession.handle_utterance` with a graph. A minimal graph 
 The single-agent loop in `single_agent/agent.py` is 155 lines. Pointing LangChain at that one loop removes the `for` and keeps the prompt, the four handlers, redaction, and `normalize_speech`. The file gets smaller by a few dozen lines and the allow-list moves inside the framework, which is the seam [PRODUCTION.md](../PRODUCTION.md) says to keep visible so a barge-in can cancel one model call.
 
 Use LangGraph when a turn must pause on the confirmation question and resume after a crash, or when the route itself has to be stored and replayed. [PRODUCTION.md](../PRODUCTION.md) already draws that line. For the call this folder runs, the plain functions are the shorter program.
+
+[single_agent_langgraph/](../single_agent_langgraph/) is the single-agent loop written as those nodes, so the library version can be read next to `handle_utterance`. It keeps this folder's prompt, sandbox, and guards. The router stays here.

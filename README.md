@@ -1,16 +1,17 @@
 # Voice desk agent
 
-The same IT desk is built twice.
+The same IT desk is built three times. Two of them use the standard library. The third draws the single-agent loop as a LangGraph.
 
 | Folder | What it is |
 | --- | --- |
 | [single_agent/](single_agent/) | One model, one prompt, four tools. Read this first. |
 | [multi_agent/](multi_agent/) | A router and three specialists do the same call. |
+| [single_agent_langgraph/](single_agent_langgraph/) | The single-agent loop as graph nodes. Needs the virtualenv in [requirements.txt](requirements.txt). |
 | [local_llm/](local_llm/) | Ollama and Open WebUI on a Kind cluster, installed with Helm. |
 
 `single_agent/voice_agent.py` is a phone-style IT support agent. A caller speaks (here, types a transcript). The program sends that text to a language model. The model either asks for a tool — look up a fix, read a ticket, open a ticket, or transfer to a person — or it returns a short sentence to be spoken aloud.
 
-The model is used as an API. This code does not train or fine-tune anything. A line-by-line trace of one live call is in [FLOW.md](FLOW.md). How to write the system prompt is in [PROMPT.md](PROMPT.md). Production boundaries are in [PRODUCTION.md](PRODUCTION.md). Whether LangChain or LangGraph would make the multi-agent version shorter is answered in [multi_agent/README.md](multi_agent/README.md).
+The model is used as an API. This code does not train or fine-tune anything. A line-by-line trace of one live call is in [FLOW.md](FLOW.md). How to write the system prompt is in [PROMPT.md](PROMPT.md). Production boundaries are in [PRODUCTION.md](PRODUCTION.md). Whether LangChain or LangGraph would make the multi-agent version shorter is answered in [multi_agent/README.md](multi_agent/README.md). The runnable graph is in [single_agent_langgraph/README.md](single_agent_langgraph/README.md). Other multi-agent shapes, where call state is stored, and short LangChain and LangGraph sketches are in [PATTERNS.md](PATTERNS.md).
 
 The single agent has three modules:
 
@@ -207,6 +208,9 @@ Read in this order.
 | `single_agent/agent.py` — `VoiceConversationAgent.handle_utterance` | The loop in the sequence diagram |
 | `single_agent/voice_agent.py` — `build_agent` | Wires the prompt, schemas, and desk methods into the loop |
 | [multi_agent/README.md](multi_agent/README.md) | The same call split into a router, specialists, and a voice agent |
+| [single_agent_langgraph/CONCEPTS.md](single_agent_langgraph/CONCEPTS.md) | What a LangGraph node, edge, and checkpoint are |
+| [single_agent_langgraph/README.md](single_agent_langgraph/README.md) | That single-agent loop as LangGraph nodes |
+| [single_agent_langgraph/FLOW.md](single_agent_langgraph/FLOW.md) | How that graph is built, then one caller line through the nodes |
 
 ## Run
 
@@ -221,7 +225,14 @@ python3 single_agent/voice_agent.py --live --verbose  # full JSON sent, received
 python3 single_agent/voice_agent.py --demo --audit    # in-memory audit list after each line
 ```
 
-`python3 voice_agent.py` at the repo root runs the single agent as well.
+The LangGraph desk uses the virtualenv. Python 3.12 is in `.python-version`.
+
+```bash
+uv venv --python 3.12 .venv
+uv pip install -r requirements.txt
+.venv/bin/python single_agent_langgraph/run.py --demo
+.venv/bin/python single_agent_langgraph/run.py --self-check
+```
 
 A self-hosted model uses the same client. [local_llm/](local_llm/) runs that server on a Kind cluster and opens Open WebUI at http://localhost:8080. The model it pulls is `llama3.2:3b`.
 
